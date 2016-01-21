@@ -9,7 +9,7 @@ import Control.Monad
 import Numeric
 import Data.Ratio
 import Data.Complex
-
+import Data.Array
 
 -- | @parse p filePath input@ runs a parser @p@ over Identity without user
 -- state. The @filePath@ is only used in error messages and may be the
@@ -42,12 +42,10 @@ parseExpr = parseAtom
         <|> parseBool
         <|> parseCharacter
         <|> parseQuoted
-        <|> do
-          _ <- char '('
-          x <- try parseList <|> parseDottedList
-          _ <- char ')'
-          return x
-
+        <|> parseQuasiQuated
+        <|> parseUnQuote
+        <|> parseVector
+        <|> parseLists
 {-
 台数的データ型の一例
 LispVal型の変数が持つことのできる値の集合を定めている
@@ -71,6 +69,7 @@ data LispVal =  Atom        String
               | Bool        Bool
               | String      String
               | Character   Char
+              | Vector     (Array Int LispVal)
 
 -- 引数で与えられた文字列中のどれか一文字を 認識する
 --
@@ -135,33 +134,6 @@ parseBool :: Parser LispVal
 parseBool = do
   _ <- char '#'
   (char 't' >> return (Bool True)) <|> (char 'f' >> return (Bool False)) -- なんか微妙
-
-
-toDouble :: LispVal -> Double
-toDouble (Float f)  = realToFrac f
-toDouble (Number n) = realToFrac n
-
--- >>>  readExpr  "(a test)" parseExpr
--- "Found value"
--- >>>  readExpr  "(a (nested) test)" parseExpr
--- "Found value"
--- >>>  readExpr  "(a (dotteed . list) test)" parseExpr
--- "Found value"
-parseList :: Parser LispVal
-parseList = liftM List $ sepBy parseExpr spaces
-
-parseDottedList :: Parser LispVal
-parseDottedList = do
-  head <- endBy parseExpr spaces
-  tail <- char '.' >> spaces >> parseExpr
-  return $ DottedList head tail
-
-parseQuoted :: Parser LispVal
-parseQuoted = do
-  _ <- char '\''
-  x <- parseExpr
-  return $ List [Atom "quote", x]
-
 
 -- Parse Numbers
 -- |
@@ -255,6 +227,11 @@ parseRatio = do
 24+2i
 >
 -}
+
+toDouble :: LispVal -> Double
+toDouble (Float f)  = realToFrac f
+toDouble (Number n) = realToFrac n
+
 parseComplex :: Parser LispVal
 parseComplex = do
   x <- try parseFloat <|> parseDecimal
@@ -262,3 +239,66 @@ parseComplex = do
   y <- try parseFloat <|> parseDecimal
   _ <- char 'i'
   return $ Complex (toDouble x :+ toDouble y)
+
+
+
+
+parseLists :: Parser LispVal
+parseLists = do
+  _ <- char '('
+  x <- try parseList <|> parseDottedList
+  _ <- char ')'
+  return x
+
+-- >>>  readExpr  "(a test)" parseExpr
+-- "Found value"
+-- >>>  readExpr  "(a (nested) test)" parseExpr
+-- "Found value"
+-- >>>  readExpr  "(a (dotteed . list) test)" parseExpr
+-- "Found value"
+parseList :: Parser LispVal
+parseList = liftM List $ sepBy parseExpr spaces
+
+parseDottedList :: Parser LispVal
+parseDottedList = do
+  head <- endBy parseExpr spaces
+  tail <- char '.' >> spaces >> parseExpr
+  return $ DottedList head tail
+
+parseQuoted :: Parser LispVal
+parseQuoted = do
+  _ <- char '\''
+  x <- parseExpr
+  return $ List [Atom "quote", x]
+
+
+
+-- >>> readExpr "`(list val val)" parseQuasiQuated
+-- "Found value"
+parseQuasiQuated :: Parser LispVal
+parseQuasiQuated = do
+  _ <- char '`'
+  x <- parseExpr
+  return $ List [Atom "quasiquote", x]
+
+-- >>> readExpr ",(list val val)" parseUnQuote
+-- "Found value"
+parseUnQuote :: Parser LispVal
+parseUnQuote = do
+  _ <- char ','
+  x <- parseExpr
+  return $ List [Atom "unquote", x]
+
+-- >>> readExpr "#(1 2 3)" parseVector
+-- "Found value"
+parseVector :: Parser LispVal
+parseVector = do
+  _ <- string "#("
+  x <- try parseVector'
+  _ <- char ')'
+  return x
+
+parseVector' :: Parser LispVal
+parseVector' = do
+  arrayValues <- sepBy parseExpr spaces
+  return $ Vector $ listArray (0, length arrayValues - 1 ) arrayValues
