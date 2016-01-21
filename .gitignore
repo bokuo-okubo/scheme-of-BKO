@@ -5,7 +5,8 @@
 .LSOverride
 
 # Icon must end with two \r
-Icon
+Icon
+
 
 # Thumbnails
 ._*
@@ -44,5 +45,4 @@ cabal.sandbox.config
 *.prof
 *.aux
 *.hp
-
-
+.stack-work/
