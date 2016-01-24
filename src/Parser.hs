@@ -59,9 +59,9 @@ symbol = oneOf "!$%&|*+-/:<=>?@^_~"
 spaces :: Parser ()
 spaces = skipMany1 space
 
-{-
-lispのAtom(それ以上分割できないデータ型)をパースする
--}
+
+-- lispのAtom(それ以上分割できないデータ型)をパースする
+-- |
 -- >>> readExpr "a!fdsafdsa" parseAtom
 -- "Found value"
 parseAtom :: Parser LispVal
@@ -81,6 +81,7 @@ escapeChars = do
     't' -> '\t'
     _   -> x
 
+-- |
 -- >>>readExpr "\"abc\"" parseString
 -- "Found value"
 parseString :: Parser LispVal
@@ -90,10 +91,13 @@ parseString = do
   _ <- char '"'
   return $ String x
 
+-- | TDOO : description
 -- >>> readExpr "#\\j" parseCharacter
 -- "Found value"
+-- | TDOO : description
 -- >>> readExpr "#\\newline" parseCharacter
 -- "Found value"
+-- | TDOO : description
 -- >>> readExpr "#\\space" parseCharacter
 -- "Found value"
 parseCharacter :: Parser LispVal
@@ -106,14 +110,16 @@ parseCharacter = do
     "newline" -> '\n'
     _         -> head value
 
+-- | TDOO : description
 -- >>> readExpr "#t" parseBool
 -- "Found value"
+-- | TDOO : description
 -- >>> readExpr "#f" parseBool
 -- "Found value"
 parseBool :: Parser LispVal
 parseBool = do
   _ <- char '#'
-  (char 't' >> return (Bool True)) <|> (char 'f' >> return (Bool False)) -- なんか微妙
+  (char 't' >> return (Bool True)) <|> (char 'f' >> return (Bool False))
 
 parseLists :: Parser LispVal
 parseLists = do
@@ -122,10 +128,13 @@ parseLists = do
   _ <- char ')'
   return x
 
+-- | TDOO : description
 -- >>>  readExpr  "(a test)" parseExpr
 -- "Found value"
+-- | TDOO : description
 -- >>>  readExpr  "(a (nested) test)" parseExpr
 -- "Found value"
+-- | TDOO : description
 -- >>>  readExpr  "(a (dotteed . list) test)" parseExpr
 -- "Found value"
 parseList :: Parser LispVal
@@ -143,8 +152,7 @@ parseQuoted = do
   x <- parseExpr
   return $ List [Atom "quote", x]
 
-
-
+-- | TDOO : description
 -- >>> readExpr "`(list val val)" parseQuasiQuated
 -- "Found value"
 parseQuasiQuated :: Parser LispVal
@@ -153,6 +161,7 @@ parseQuasiQuated = do
   x <- parseExpr
   return $ List [Atom "quasiquote", x]
 
+-- | TDOO : description
 -- >>> readExpr ",(list val val)" parseUnQuote
 -- "Found value"
 parseUnQuote :: Parser LispVal
@@ -161,6 +170,7 @@ parseUnQuote = do
   x <- parseExpr
   return $ List [Atom "unquote", x]
 
+-- | TDOO : description
 -- >>> readExpr "#(1 2 3)" parseVector
 -- "Found value"
 parseVector :: Parser LispVal
@@ -174,9 +184,3 @@ parseVector' :: Parser LispVal
 parseVector' = do
   arrayValues <- sepBy parseExpr spaces
   return $ Vector $ listArray (0, length arrayValues - 1 ) arrayValues
-
-
-{-
-式の列
-む または ドットと一つの指揮
--}
